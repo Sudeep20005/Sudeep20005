@@ -1,0 +1,407 @@
+---
+title: "Data Input & Management in R"
+author: "sudeep kumar shahi"
+date: "2025-12-12"
+output: html_document
+---
+
+```{r}
+
+
+#install.packages("RSQLite")
+library(DBI)     # Load DBI library 
+library(RSQLite) # Load RSQLite library 
+
+# Establishing connection to SQLite database
+conn <- dbConnect(RSQLite::SQLite(),"C:/Users/User/Documents/mental_health.sqlite")  # Connect to local SQLite database
+
+dbListTables(conn) # List all tables in the database
+
+# Querying the Survey table
+dbGetQuery(conn, "SELECT * FROM Survey")  # Retrieve all rows from Survey table
+
+# SELECT ALL FROM Question table
+data0 <- dbGetQuery(conn,"SELECT * FROM Question")  # Load all questions
+
+# SELECT first 3 questions from Question table
+data1 = dbGetQuery(conn,"SELECT * FROM Question LIMIT 3")  # Limit to first 3 rows
+print(data1)  # Print first 3 questions
+
+# Querying the Answer table
+data2=dbGetQuery(conn,"SELECT*FROM Answer") 
+summary(data2)
+summary(data2$AnswerText)  
+str(data2)  # Structure of Answer table
+
+# Convert AnswerText to numeric for age (assuming numeric answers)
+data2$age<-as.numeric(data2$AnswerText)
+str(data2)  # Check structure after conversion
+
+?subset 
+
+# Subsetting answers for specific questions
+data2.1<-subset(data2,QuestionID==1)  # Answers for QuestionID 1
+summary(data2.1$age)  # Summary of age column
+
+data2.2<-subset(data2,QuestionID==2)  # Answers for QuestionID 2
+names(data2.2)[1]<-"gender"  # Rename first column to 'gender'
+str(data2.2)  # Check structure
+table(data2.2$gender)  # Frequency table for gender
+
+dbDisconnect(conn)  # Close the database connection
+
+
+#install.packages("XML","xml2")
+#install.packages("xml2")
+library(XML) 
+library(xml2) 
+
+# Read XML data from URL
+plant_xml<-read_xml('https://www.w3schools.com/xml/plant_catalog.xml')
+str(plant_xml)  # Check XML structure
+
+plant_xml_parse<-xmlParse(plant_xml)  # Parse XML into R structure
+plant_xml_parse 
+plant_nodes=getNodeSet(plant_xml_parse,"//PLANT")  # Extract all PLANT nodes
+data3<-xmlToDataFrame(nodes=plant_nodes)  # Convert XML nodes to data frame
+head(data3)  
+str(data3)  # Check structure
+
+# Cleaning price column
+data3$price_clean <- gsub("\\$", "", data3$PRICE)  # Remove $ symbol
+str(data3$price_clean)
+data3$PRICE<- as.numeric(data3$price_clean)  # Convert to numeric
+str(data3$Price_numeric)  # Check structure of numeric price
+
+# WEB SCRAPING USING RVEST
+#install.packages("rvest")
+library(rvest)
+
+# Read HTML page
+table_web<-read_html('https://www.w3schools.com/html/html_tables.asp')
+str(table_web)
+
+table_web %>% html_nodes("table")  # Extract all table nodes
+table_table<-table_web%>%html_table()%>%.[[1]]  # Extract first table as dataframe
+
+
+url <- "https://en.wikipedia.org/wiki/Argentina_national_football_team"
+file <- read_html(url)
+tables <- html_nodes(file,"table")  # Extract all tables
+tables  # Display list of tables
+
+# Extract and preview tables 18-24
+test1 <- html_table(tables[18]); head(test1)
+test2 <- html_table(tables[19]); head(test2)
+test3 <- html_table(tables[20]); head(test3)
+test4 <- html_table(tables[21]); head(test4)
+test5 <- html_table(tables[22]); head(test5)
+test6 <- html_table(tables[23]); head(test6)
+
+# Table 24 requires fixing first row as column names
+test7 <- html_table(tables[24]); head(test7)
+test7.df <- as.data.frame(test7)  # Convert to data frame
+names(test7.df) <- paste(names(test7.df),test7.df[1,], sep = "_")  # Add first row values to column names
+test7.df <- test7.df[-1,]  # Remove first row
+head(test7.df)
+str(test7.df)  # Check structure
+
+# Extract other tables for preview
+test8 <- html_table(tables[25]); head(test8)
+test9 <- html_table(tables[30]); head(test9)
+test9.df<-as.data.frame(test9)
+summary(test9.df$D)  # Summary of column D
+
+# COVID-19 TABLE SCRAPING FROM WIKIPEDIA
+wiki_link <- "https://en.wikipedia.org/wiki/COVID-19_pandemic_in_Nepal"
+wiki_page <- read_html(wiki_link)
+str(wiki_page)
+
+wiki_page %>% html_nodes("table")  # List all tables
+
+# Extract table using div class
+covid_table <- wiki_page %>%
+  html_element("div.COVID-19_pandemic_data_Nepal_medical_cases") %>%
+  html_nodes("table") %>% html_table() %>% .[[1]]  # Get first table
+str(covid_table)
+
+# Use first row as column names
+names(covid_table) <- paste(names(covid_table),covid_table[1],sep="_")
+covid_table <- covid_table[-1,]  # Remove first row
+str(covid_table)
+
+# Rename columns
+colnames(covid_table) <- c("Date", "Confirmed_Cases_Total",
+                           "Confirmed_Cases_New", "Confirmed_Cases_Active",
+                           "Recoveries_Total","Recoveries_New","Deaths_Total",
+                           "Deaths_New","PCR_Total","PCR_New","TPR","RR","CFR","Ref")
+
+# Cleaning + symbols
+covid_table$Confirmed_Cases_New <- gsub('[+]',"", covid_table$Confirmed_Cases_New)
+covid_table$Recoveries_New <- gsub('[+]',"", covid_table$Recoveries_New)
+covid_table$Deaths_New <- gsub('[+]',"", covid_table$Deaths_New)
+covid_table$PCR_New <- gsub('[+]',"", covid_table$PCR_New)
+
+# Cleaning % symbols
+covid_table$TPR <- gsub('[%]', "", covid_table$TPR)
+covid_table$RR <- gsub('[%]', "", covid_table$RR)
+covid_table$CFR <- gsub('[%]', "", covid_table$CFR)
+
+# Convert numeric columns
+covid_table$Confirmed_Cases_Total <- as.numeric(gsub("[^0-9]", "", covid_table$Confirmed_Cases_Total))
+covid_table$Confirmed_Cases_New   <- as.numeric(gsub("[^0-9]", "", covid_table$Confirmed_Cases_New))
+covid_table$Recoveries_Total      <- as.numeric(gsub("[^0-9]", "", covid_table$Recoveries_Total))
+covid_table$Recoveries_New        <- as.numeric(gsub("[^0-9]", "", covid_table$Recoveries_New))
+covid_table$Confirmed_Cases_Active <- as.numeric(gsub("[^0-9]", "", covid_table$Confirmed_Cases_Active))
+
+# Print key columns to check
+print(covid_table$Confirmed_Cases_Total)
+print(covid_table$Confirmed_Cases_New)
+print(covid_table$Recoveries_Total)
+print(covid_table$Recoveries_New)
+print(covid_table$Confirmed_Cases_Active)
+
+# DATABASE OPERATIONS
+library(DBI)
+library(dbplyr)
+#install.packages("dbplyr")
+library(tidyverse)
+#install.packages('tidyverse')
+library(RSQLite)
+library(DBI)
+
+# In-memory SQLite connection
+con<-dbConnect(RSQLite::SQLite(),":memory:")
+dbListTables(con)  # List tables
+dbWriteTable(con,"mtcars",mtcars)  # Write mtcars table
+dbListTables(con)  # Check tables
+dbListFields(con,"mtcars")  # List fields
+dbReadTable(con,"mtcars")  # Read table
+
+# Query with condition
+res <- dbSendQuery(con, "SELECT * FROM mtcars WHERE cyl = 4")
+dbFetch(res)  # Fetch query result
+dbClearResult(res)  # Clear result from memory
+
+dbDisconnect(con)  # Close connection
+
+# DUCKDB DATABASE
+#install.packages("duckdb")
+con<-DBI::dbConnect(duckdb::duckdb())  # Connect to DuckDB
+#install.packages("ggplot2")
+library(DBI)
+library(duckdb)
+library(ggplot2)
+
+# Write ggplot2 datasets to DuckDB
+dbWriteTable(con,"mpg",ggplot2::mpg)
+dbWriteTable(con,'diamonds',ggplot2::diamonds)
+dbListTables(con)  # Check tables
+
+library(dplyr)
+con %>% dbReadTable("diamonds") %>% as_tibble()  # Read diamonds as tibble
+
+# Diamond filtering
+diamonds_db <- tbl(con,"diamonds")  # Connect to diamonds table
+diamonds_db <- tbl(con,sql("SELECT*FROM diamonds"))
+big_diamonds_db <- diamonds_db %>% filter(price>15000) %>% select(carat:clarity,price)
+big_diamonds_db %>% show_query()  # Show SQL query
+big_diamonds <- big_diamonds_db %>% collect()  # Fetch to R
+big_diamonds  # Display result
+
+# NYCFLIGHTS13 WITH DBPLYR
+#install.packages("nycflights13")
+library(dbplyr)
+dbplyr::copy_nycflights13(con)  # Copy flights data to DuckDB
+flights <- tbl(con,"flights")  # Connect to flights table
+planes <- tbl(con,"planes")    # Connect to planes table
+flights
+planes
+
+flights %>% show_query()  # Show SQL for flights
+planes %>% show_query()   # Show SQL for planes
+
+# Filter and arrange example
+flights %>% filter(dest=="IAH") %>% arrange(dep_delay) %>% show_query()
+
+# Tibbles examples
+library(dplyr)
+library(tibble)
+table1 <- tibble(
+  country = c("Afgansthan", "Afgansthan", "Brazil", "Brazil", "China", "China"),
+  year = c(1999, 2000, 1999, 2000, 1999, 2000),
+  cases = c(745, 2666, 37737, 80488, 54325, 234523),
+  population = c(54543, 4354, 3533, 35345, 435435435, 345345)
+)
+table1
+
+table2 <- tibble(
+  country=c("afgansthan","afgansthan","afgansthan","afgansthan","brazil","brazil"),
+  type=c("cases","population","cases","population","cases","population"),
+  yeartype=c(1999,1999,2000,2000,1999,1999),
+  count=c(745,19987071,2666,20595360,37737,1720006362)
+)
+table2
+
+library(tidyr)
+# Convert long to wide
+table2 %>% pivot_wider(names_from = type, values_from = count)
+
+# Pivot longer example
+table4a <- tibble(
+  country=c("afgansthan","brazil","china"),
+  '1999'=c(745,453,25),
+  '2000'=c(35,524354,352435)
+)
+table4a %>% pivot_longer(cols = c('1999', '2000'), names_to = "year", values_to = "cases")
+
+# Separate rate column
+table3 <- tibble(
+  country = c("Afghanistan","Afghanistan","Brazil","Brazil","China","China"),
+  year = c(1999,2000,1999,2000,1999,2000),
+  rate = c("745/199987071","2666/20595360","37737/172006362","80488/1745504898","212258/1272915272","213766/1280428583")
+)
+table3 %>% separate(rate, into = c("cases","population"))
+table3 %>% separate(rate, into = c("cases","population"), sep = "/")
+
+# Mean of stock returns ignoring NA
+stocks <- tibble(
+  year=c(2015,2015,2015,2015,2016,2016,2016),
+  qtr=c(1,2,3,4,2,3,4),
+  return=c(1.88,0.59,0.35,NA,0.92,0.17,2.66)
+)
+print(mean(stocks$return, na.rm=TRUE))
+
+# Merge examples
+authors <- data.frame(
+  surname = c("Tukey", "Venables", "Tierney", "Ripley", "McNeil"),
+  nationality = c("US", "Australia", "US", "UK", "Australia"),
+  deceased = c("yes", rep("no", 4))
+)
+authorN <- within(authors, { name <- surname; rm(surname) })  # Rename column for merge
+print(authorN)
+
+books <- data.frame(
+  name = c("Tukey", "Venables", "Tierney","Ripley", "Ripley", "McNeil", "R Core"),
+  title = c("Exploratory Data Analysis","Modern Applied Statistics ...","LISP-STAT","Spatial Statistics", "Stochastic Simulation","Interactive Data Analysis","An Introduction to R"),
+  other.author = c(NA, "Ripley", NA, NA, NA, NA,"Venables & Smith")
+)
+print(books)
+
+# Merge examples
+(m0 <- merge(authorN, books))
+(m1 <- merge(authors, books, by.x = "surname", by.y = "name"))
+m2 <- merge(books, authors, by.x = "name", by.y = "surname")
+(m3 <- merge(authors, books, by.x = "surname", by.y = "name", all=TRUE))
+stopifnot(exprs = {
+  identical(m0, m2[, names(m0)])
+  as.character(m1[, 1]) == as.character(m2[, 1])
+  all.equal(m1[, -1], m2[, -1][ names(m1)[-1] ])
+  identical(dim(merge(m1, m2, by = NULL)), c(nrow(m1)*nrow(m2), ncol(m1)+ncol(m2)))
+})
+merge(authors, books, by.x = "surname", by.y = "name", all = TRUE)
+
+# More merge examples
+x <- data.frame(k1 = c(NA,NA,3,4,5), k2 = c(1,NA,NA,4,5), data = 1:5)
+y <- data.frame(k1 = c(NA,2,NA,4,5), k2 = c(NA,NA,3,4,5), data = 1:5)
+merge(x, y, by = c("k1","k2"))
+merge(x, y, by = "k1")
+merge(x, y, by = "k2", incomparables = NA)
+
+# DPLYR joins
+tibble1 <- tibble(id=c(1,2,3), name=c("Alice","Bob","Charlie"))
+tibble2 <- tibble(id=c(1,2,3), age=c(25,30,35))
+tibble3 <- tibble(id=c(1,3,2), sex=c("F","F","M"))
+merged_tibble <- left_join(tibble1,tibble2,tibble3,by="id")
+print(merged_tibble)
+
+# NYCFLIGHTS13
+library(nycflights13)
+library(dplyr)
+
+jan1 <- flights %>% filter(month == 1, day == 1) %>% collect()
+summary(jan1$dep_delay)  # Summary statistics
+
+# Reference ranges for dep_delay
+dep.delay.mean <- mean(jan1$dep_delay, na.rm = T)
+dep.delay.sd <- sd(jan1$dep_delay, na.rm = T)
+dep.delay.LL <- dep.delay.mean - 1.96*dep.delay.sd
+dep.delay.UL <- dep.delay.mean + 1.96*dep.delay.sd
+ref.range <- c(dep.delay.LL, dep.delay.UL)
+print(ref.range)
+
+dep.delay.LL1 <- quantile(jan1$dep_delay,0.025,na.rm = T)
+dep.delay.UL1 <- quantile(jan1$dep_delay,0.975,na.rm = T)
+ref.range.1 <- c(dep.delay.LL1, dep.delay.UL1)
+
+# Outlier detection
+outliers <- which(jan1$dep_delay < dep.delay.LL | jan1$dep_delay > dep.delay.UL)
+outliers <- which(jan1$dep_delay < dep.delay.LL1 | jan1$dep_delay > dep.delay.UL1)
+
+# Histograms and QQ plots
+hist(jan1$dep_delay)
+abline(v=dep.delay.LL)
+abline(v=dep.delay.UL)
+qqnorm(jan1$dep_delay)
+qqline(jan1$dep_delay)
+
+# Log transform with finite values
+log.dep.delay <- log(jan1$dep_delay[jan1$dep_delay>0])  # Avoid -Inf
+hist(log.dep.delay)
+qqnorm(log.dep.delay)
+qqline(log.dep.delay)
+
+boxplot(jan1$dep_delay)
+
+dep.delay.Q1 <- quantile(jan1$dep_delay,0.25,na.rm=T)
+dep.delay.Q2 <- quantile(jan1$dep_delay,0.75,na.rm=T)
+dep.delay.IQR <- IQR(jan1$dep_delay,na.rm=T)
+
+sum(jan1$dep_delay > 30, na.rm = TRUE)
+
+# Filtering examples
+nov_dec <- filter(flights, month %in% c(11,12))
+filter(flights, !(arr_delay>120 | dep_delay>120))
+sum(jan1$arr_delay >= 120, na.rm=TRUE)
+
+arrange(flights, year, month, day)
+arrange(flights, desc(dep_delay))
+
+select(flights, time_hour, air_time, everything())
+select(flights, contains('TIME'))
+
+# Flights small example with new columns
+flights_sml <- flights %>% 
+  select(year:day, ends_with("delay"), distance, air_time) %>% 
+  mutate(
+    gain = dep_delay - arr_delay,  # Calculate gain
+    speed = distance / air_time * 60  # Speed in miles/hour
+  )
+flights_sml %>% arrange(desc(speed))
+
+flights %>% 
+  select(year:day, ends_with("delay"), distance, air_time, tailnum) %>%
+  mutate(speed = distance / air_time * 60) %>%
+  arrange(desc(speed))
+
+# Summarize dep_delay
+summarise(flights, delay = mean(dep_delay, na.rm=TRUE))
+
+# Grouping examples
+by_day <- group_by(flights, year, month, day)
+summarise(flights, delay = mean(dep_delay, na.rm=TRUE))
+by_day <- group_by(flights, carrier)
+summarise(flights, delay = mean(dep_delay, na.rm=TRUE))
+
+by_dest <- group_by(flights, dest)
+delay <- summarise(
+  by_dest,
+  count = n(),  # Count of flights
+  dist = mean(distance, na.rm = TRUE),  # Average distance
+  delay = mean(arr_delay, na.rm = TRUE)  # Average arrival delay
+)
+
+head(delay)
+
+```
+
