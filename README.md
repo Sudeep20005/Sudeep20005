@@ -1,5 +1,5 @@
 #  About Me:
-###  Hi, I'm Sudeep Shahi<br><br>-  Bachelor’s student with an interest in Data Science & Technology  <br>-  Learning Python, SQL, and core Computer Science concepts  <br>- Interested in data analysis, problem-solving, and programming <br>-  Always eager to learn and improve my technical skills  <br>
+###  Hi, I'm Sudeep kumar  Shahi<br><br>-  Bachelor’s student with an interest in Data Science & Technology  <br>-  Learning Python, SQL, and core Computer Science concepts  <br>- Interested in data analysis, problem-solving, and programming <br>-  Always eager to learn and improve my technical skills  <br>
 
 
 # 💻 Tech Stack:
